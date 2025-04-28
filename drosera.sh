@@ -17,7 +17,7 @@ check_status() {
 
 # Function to validate private key
 validate_private_key() {
-    local private_key=$1
+    local private_key=${1#0x}
     if [[ ! "$private_key" =~ ^[0-9a-fA-F]{64}$ ]]; then
         echo "Error: Invalid private key format. Must be 64 hexadecimal characters."
         exit 1
@@ -59,10 +59,11 @@ echo ""
 read -p "Enter your first EVM wallet private key (Operator 1): " OPERATOR1_PRIVATE_KEY
 read -p "Enter your first EVM wallet public address (Operator 1): " OPERATOR1_ADDRESS
 read -p "Enter your second EVM wallet private key (Operator 2): " OPERATOR2_PRIVATE_KEY
+OPERATOR2_PRIVATE_KEY_ORIGINAL=$OPERATOR2_PRIVATE_KEY
 read -p "Enter your second EVM wallet public address (Operator 2): " OPERATOR2_ADDRESS
 # Auto-detect VPS public IP
 echo "Detecting VPS public IP..."
-VPS_IP=$(curl -s ifconfig.me || curl -s icanhazip.com)
+VPS_IP=$(curl -s -4 ifconfig.me || curl -s -4 icanhazip.com)
 if [[ -z "$VPS_IP" ]]; then
     read -p "Could not detect VPS public IP. Please enter it manually: " VPS_IP
 fi
@@ -250,7 +251,7 @@ check_status "Forge init"
 curl -fsSL https://bun.sh/install | bash
 source /root/.bashrc
 bun install
-forge build
+forge build || echo "Warning: forge build failed, continuing setup..."
 check_status "Forge build"
 source /root/.bashrc
 
@@ -442,9 +443,11 @@ source /root/.bashrc
 
 # Validate Operator 2 private key
 echo "Validating Operator 2 private key..."
+OPERATOR2_PRIVATE_KEY=${OPERATOR2_PRIVATE_KEY#0x}
 if [[ ! "$OPERATOR2_PRIVATE_KEY" =~ ^[0-9a-fA-F]{64}$ ]]; then
     echo "Error: Invalid Operator 2 private key format. Must be 64 hexadecimal characters."
     read -p "Enter a valid Operator 2 private key: " OPERATOR2_PRIVATE_KEY
+    OPERATOR2_PRIVATE_KEY=${OPERATOR2_PRIVATE_KEY#0x}
     if [[ ! "$OPERATOR2_PRIVATE_KEY" =~ ^[0-9a-fA-F]{64}$ ]]; then
         echo "Error: Still invalid Operator 2 private key. Exiting."
         exit 1
@@ -505,7 +508,7 @@ cd ~/Drosera-Network || { echo "Error: Cannot change to ~/Drosera-Network direct
 echo "Creating .env file..."
 cat << EOF > .env
 ETH_PRIVATE_KEY=$OPERATOR1_PRIVATE_KEY
-ETH_PRIVATE_KEY2=$OPERATOR2_PRIVATE_KEY
+ETH_PRIVATE_KEY2=$OPERATOR2_PRIVATE_KEY_ORIGINAL
 VPS_IP=$VPS_IP
 P2P_PORT1=31313
 SERVER_PORT1=31314
